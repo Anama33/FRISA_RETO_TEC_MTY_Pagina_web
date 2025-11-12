@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clasificador FRISA + Asistente IA (Azure OpenAI)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
+  <style>
+    :root {
+      --main-color: #C8102E;
+      --neutral-color: #7D7D7D;
+    }
+
+    * { box-sizing: border-box; transition: all 0.3s ease; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: #2E2E2E;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+    }
+
+    .container {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 40px 30px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      width: 420px;
+      max-width: 90%;
+      color: #2E2E2E;
+    }
+
+    .logo-container img {
+      width: 120px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      color: var(--main-color);
+      margin-bottom: 10px;
+    }
+
+    input[type="file"] {
+      background: #F9F9F9;
+      border: 2px dashed var(--main-color);
+      border-radius: 10px;
+      padding: 12px;
+      width: 100%;
+      cursor: pointer;
+      color: #2E2E2E;
+    }
+
+    img#preview {
+      margin-top: 20px;
+      border-radius: 12px;
+      width: 224px;
+      height: 224px;
+      object-fit: cover;
+      display: none;
+      border: 3px solid var(--main-color);
+    }
+
+    #result {
+      margin-top: 25px;
+      font-size: 1.2em;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    /* Colores fijos FRISA */
+    #result.defectuosa {
+      background: rgba(200,16,46,0.15);
+      border: 1px solid var(--main-color);
+      color: var(--main-color);
+    }
+
+    #result.no_defectuosa {
+      background: rgba(125,125,125,0.15);
+      border: 1px solid var(--neutral-color);
+      color: var(--neutral-color);
+    }
+
+    .loader {
+      display: none;
+      margin: 20px auto;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid var(--main-color);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    footer {
+      margin-top: 25px;
+      font-size: 0.8em;
+      color: #7D7D7D;
+    }
+
+    /* --- Helpdesk --- */
+    .helpdesk {
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .helpdesk h2 {
+      color: var(--main-color);
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"], input[type="password"], textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #7D7D7D;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: #2E2E2E;
+    }
+
+    #sendPrompt {
+      background: var(--main-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    #sendPrompt:hover {
+      filter: brightness(0.9);
+    }
+
+    #responseBox {
+      background: #F4F4F4;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      min-height: 50px;
+      color: #2E2E2E;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-container">
+      <img src="FRISA.png" alt="Logo FRISA">
+    </div>
+
+    <h1>Clasificador de Imágenes</h1>
+    <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No Defectuosa</b>.</p>
+
+    <input type="file" id="imageInput" accept="image/*">
+    <img id="preview" alt="Previsualización">
+    <div class="loader" id="loader"></div>
+    <p id="result">Esperando imagen...</p>
+
+    <!-- 🔧 Helpdesk Azure OpenAI -->
+    <div class="helpdesk">
+      <h2>💬 Asistente IA (Azure OpenAI)</h2>
+
+      <input type="text" id="endpointInput" placeholder="https://TU_ENDPOINT.openai.azure.com/">
+      <input type="text" id="deploymentInput" placeholder="Nombre del deployment (ej: gpt-4o)">
+      <input type="password" id="apiKeyInput" placeholder="Tu API Key de Azure OpenAI">
+      
+      <textarea id="promptInput" placeholder="Escribe tu pregunta o solicitud..."></textarea>
+      <button id="sendPrompt">Enviar a Azure OpenAI</button>
+      <div id="responseBox">Esperando mensaje...</div>
+    </div>
+
+    <footer>🧠 FRISA | Clasificador + Asistente Azure OpenAI GPT-4o</footer>
+  </div>
+
+  <script>
+    let model, metadata;
+
+    async function loadModel() {
+      model = await tf.loadLayersModel('model.json');
+      const metaResponse = await fetch('metadata.json');
+      metadata = await metaResponse.json();
+      console.log("Modelo y metadata cargados correctamente");
+    }
+
+    async function predict() {
+      const imgElement = document.getElementById('preview');
+      const resultBox = document.getElementById('result');
+      const loader = document.getElementById('loader');
+
+      resultBox.style.display = "none";
+      loader.style.display = "block";
+
+      const size = Math.min(imgElement.width, imgElement.height);
+      const startX = (imgElement.width - size) / 2;
+      const startY = (imgElement.height - size) / 2;
+      const imageTensor = tf.browser.fromPixels(imgElement)
+        .slice([startY, startX, 0], [size, size, 3])
+        .resizeBilinear([metadata.imageSize, metadata.imageSize])
+        .toFloat()
+        .div(127.5)
+        .sub(1)
+        .expandDims(0);
+
+      let logits = model.predict(imageTensor);
+      if (!Array.isArray(logits)) logits = tf.softmax(logits);
+
+      const prediction = await logits.data();
+      loader.style.display = "none";
+      tf.dispose([imageTensor, logits]);
+
+      const labels = metadata.labels;
+      const results = Array.from(prediction).map((p, i) => ({
+        label: labels[i],
+        probability: (p * 100).toFixed(2)
+      }));
+      results.sort((a, b) => b.probability - a.probability);
+
+      const top = results[0];
+      resultBox.textContent = `Predicción: ${top.label} (${top.probability}%)`;
+
+      // 🔴 Aplica solo el color del box según la predicción
+      resultBox.className = "";
+      if (top.label.toLowerCase().includes("non") || top.label.toLowerCase().includes("no")) {
+        resultBox.classList.add("no_defectuosa");
+      } else {
+        resultBox.classList.add("defectuosa");
+      }
+
+      resultBox.style.display = "block";
+    }
+
+    document.getElementById('imageInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const img = document.getElementById('preview');
+      if (!file) return;
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        img.style.display = "block";
+        predict();
+      };
+    });
+
+    // 💬 Chat Azure OpenAI
+    document.getElementById('sendPrompt').addEventListener('click', async () => {
+      const endpoint = document.getElementById('endpointInput').value.trim();
+      const deployment = document.getElementById('deploymentInput').value.trim();
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      const prompt = document.getElementById('promptInput').value.trim();
+      const box = document.getElementById('responseBox');
+
+      if (!endpoint || !deployment || !apiKey) {
+        alert("⚠️ Completa los campos: Endpoint, Deployment y API Key.");
+        return;
+      }
+      if (!prompt) return alert("Escribe una pregunta primero.");
+
+      box.textContent = "💭 Enviando solicitud a Azure OpenAI...";
+
+      try {
+        const url = `${endpoint}openai/deployments/${deployment}/chat/completions?api-version=2024-12-01-preview`;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": apiKey
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: "Eres un asistente técnico de soporte de FRISA, claro y servicial." },
+              { role: "user", content: prompt }
+            ],
+            max_tokens: 1024,
+          })
+        });
+
+        const data = await res.json();
+        console.log("🔍 Respuesta Azure:", data);
+
+        if (data.error) {
+          box.textContent = `❌ Error: ${data.error.message}`;
+          return;
+        }
+
+        const reply = data.choices?.[0]?.message?.content;
+        box.textContent = reply ? reply.trim() : "⚠️ No se recibió respuesta del modelo.";
+      } catch (err) {
+        console.error("❌ Error:", err);
+        box.textContent = "❌ Error de conexión o datos incorrectos.";
+      }
+    });
+
+    loadModel();
+  </script>
+</body>
+</html>
