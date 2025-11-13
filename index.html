@@ -21,6 +21,7 @@
       align-items: center;
       justify-content: center;
       color: #FFFFFF;
+      padding: 20px;
     }
 
     .container {
@@ -30,7 +31,7 @@
       text-align: center;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
       width: 420px;
-      max-width: 90%;
+      max-width: 100%;
       color: #2E2E2E;
     }
 
@@ -74,7 +75,6 @@
       display: none;
     }
 
-    /* Colores fijos FRISA */
     #result.defectuosa {
       background: rgba(200,16,46,0.15);
       border: 1px solid var(--main-color);
@@ -109,7 +109,6 @@
       color: #7D7D7D;
     }
 
-    /* --- Helpdesk --- */
     .helpdesk {
       margin-top: 40px;
       text-align: left;
@@ -157,23 +156,93 @@
       color: #2E2E2E;
       white-space: pre-wrap;
     }
+
+    /* ====================================================================== */
+    /* --- RESPONSIVE PARA LAPTOP Y PANTALLAS GRANDES ---------------------- */
+    /* ====================================================================== */
+    @media (min-width: 900px) {
+
+      body {
+        justify-content: center;
+      }
+
+      .container {
+        width: 900px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        text-align: left;
+        padding: 50px 40px;
+      }
+
+      .logo-container {
+        text-align: center;
+        grid-column: span 2;
+      }
+
+      h1 {
+        text-align: center;
+        grid-column: span 2;
+      }
+
+      .helpdesk {
+        margin-top: 0;
+        padding-left: 20px;
+        border-left: 2px solid #e0e0e0;
+      }
+
+      #preview {
+        width: 260px;
+        height: 260px;
+      }
+
+      #sendPrompt {
+        width: auto;
+        padding: 12px 20px;
+      }
+
+      footer {
+        grid-column: span 2;
+        text-align: center;
+      }
+    }
+
+    /* ====================================================================== */
+    /* --- RESPONSIVE PARA TABLETS ----------------------------------------- */
+    /* ====================================================================== */
+    @media (min-width: 600px) and (max-width: 899px) {
+      .container {
+        width: 600px;
+        padding: 40px;
+      }
+
+      #preview {
+        width: 240px;
+        height: 240px;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div class="container">
+
     <div class="logo-container">
       <img src="FRISA.png" alt="Logo FRISA">
     </div>
 
     <h1>Clasificador de Imágenes</h1>
-    <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No Defectuosa</b>.</p>
 
-    <input type="file" id="imageInput" accept="image/*">
-    <img id="preview" alt="Previsualización">
-    <div class="loader" id="loader"></div>
-    <p id="result">Esperando imagen...</p>
+    <div>
+      <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No Defectuosa</b>.</p>
 
-    <!-- 🔧 Helpdesk Azure OpenAI -->
+      <input type="file" id="imageInput" accept="image/*">
+      <img id="preview" alt="Previsualización">
+      <div class="loader" id="loader"></div>
+      <p id="result">Esperando imagen...</p>
+    </div>
+
+    <!-- --- Helpdesk --- -->
     <div class="helpdesk">
       <h2>💬 Asistente IA (Azure OpenAI)</h2>
 
@@ -187,8 +256,10 @@
     </div>
 
     <footer>🧠 FRISA | Clasificador + Asistente Azure OpenAI GPT-4o</footer>
+
   </div>
 
+  <!-- SCRIPT IGUAL -->
   <script>
     let model, metadata;
 
@@ -210,6 +281,7 @@
       const size = Math.min(imgElement.width, imgElement.height);
       const startX = (imgElement.width - size) / 2;
       const startY = (imgElement.height - size) / 2;
+
       const imageTensor = tf.browser.fromPixels(imgElement)
         .slice([startY, startX, 0], [size, size, 3])
         .resizeBilinear([metadata.imageSize, metadata.imageSize])
@@ -235,7 +307,6 @@
       const top = results[0];
       resultBox.textContent = `Predicción: ${top.label} (${top.probability}%)`;
 
-      // 🔴 Aplica solo el color del box según la predicción
       resultBox.className = "";
       if (top.label.toLowerCase().includes("non") || top.label.toLowerCase().includes("no")) {
         resultBox.classList.add("no_defectuosa");
@@ -257,7 +328,6 @@
       };
     });
 
-    // 💬 Chat Azure OpenAI
     document.getElementById('sendPrompt').addEventListener('click', async () => {
       const endpoint = document.getElementById('endpointInput').value.trim();
       const deployment = document.getElementById('deploymentInput').value.trim();
@@ -292,8 +362,6 @@
         });
 
         const data = await res.json();
-        console.log("🔍 Respuesta Azure:", data);
-
         if (data.error) {
           box.textContent = `❌ Error: ${data.error.message}`;
           return;
@@ -302,7 +370,6 @@
         const reply = data.choices?.[0]?.message?.content;
         box.textContent = reply ? reply.trim() : "⚠️ No se recibió respuesta del modelo.";
       } catch (err) {
-        console.error("❌ Error:", err);
         box.textContent = "❌ Error de conexión o datos incorrectos.";
       }
     });
