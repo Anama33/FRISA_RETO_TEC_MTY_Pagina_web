@@ -1,292 +1,283 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clasificador FRISA + Asistente IA</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clasificador FRISA + Asistente IA</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
 
-<style>
-:root { --main-color:#C8102E; --neutral-color:#7D7D7D; }
+  <style>
+    :root { --main-color:#C8102E; --neutral-color:#7D7D7D; }
+    * { box-sizing:border-box; }
 
-body {
-  font-family:"Inter",sans-serif;
-  background:#2E2E2E;
-  color:white;
-  display:flex;
-  justify-content:center;
-  padding:20px;
-}
+    body {
+      font-family:"Inter",sans-serif;
+      background:#2E2E2E;
+      color:#FFF;
+      display:flex;
+      justify-content:center;
+      padding:20px;
+    }
 
-.container {
-  background:white;
-  color:#1a1a1a;
-  width:900px;
-  padding:40px;
-  border-radius:16px;
-  display:grid;
-  gap:40px;
-  grid-template-columns:1fr 1fr;
-  box-shadow:0 8px 32px rgba(0,0,0,0.25);
-}
+    .container {
+      background:white;
+      color:#2E2E2E;
+      border-radius:16px;
+      padding:40px;
+      width:900px;
+      max-width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.25);
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:40px;
+    }
 
-.logo-container, h1, footer {
-  grid-column:span 2;
-  text-align:center;
-}
+    .logo-container, h1, footer {
+      grid-column:span 2;
+      text-align:center;
+    }
 
-input[type="file"] {
-  width:100%; padding:12px;
-  border:2px dashed var(--main-color);
-  border-radius:10px; cursor:pointer;
-}
+    input[type="file"]{
+      width:100%; padding:12px;
+      border:2px dashed var(--main-color);
+      border-radius:10px;
+      cursor:pointer;
+      background:#F9F9F9;
+    }
 
-#preview {
-  display:none; width:260px; height:260px;
-  margin-top:20px; border-radius:12px;
-  border:3px solid var(--main-color);
-  object-fit:cover;
-}
+    #preview {
+      margin-top:20px; width:260px; height:260px;
+      display:none; object-fit:cover;
+      border-radius:12px; border:3px solid var(--main-color);
+    }
 
-#result {
-  margin-top:15px; padding:12px; border-radius:8px;
-  display:none; font-size:1.1em;
-}
+    #result {
+      margin-top:20px; font-size:1.2em; padding:12px;
+      border-radius:10px; display:none;
+    }
 
-#result.defectuosa {
-  background:rgba(200,16,46,0.2);
-  border:1px solid var(--main-color);
-  color:var(--main-color);
-}
+    #result.defectuosa {
+      background:rgba(200,16,46,0.15);
+      border:1px solid var(--main-color);
+      color:var(--main-color);
+    }
 
-#result.no_defectuosa {
-  background:rgba(100,100,100,0.1);
-  border:1px solid var(--neutral-color);
-  color:var(--neutral-color);
-}
+    #result.no_defectuosa {
+      background:rgba(125,125,125,0.15);
+      border:1px solid var(--neutral-color);
+      color:var(--neutral-color);
+    }
 
-textarea {
-  width:100%; padding:10px;
-  border-radius:10px; border:1px solid #777;
-  min-height:90px;
-}
+    textarea {
+      width:100%; min-height:90px;
+      padding:10px; border-radius:8px; border:1px solid #7D7D7D;
+    }
 
-/* Botón gris y redondeado */
-#sendPrompt {
-  width:100%;
-  margin-top:15px;
-  background:#6b6b6b;
-  color:white;
-  padding:12px;
-  border:none;
-  border-radius:50px;
-  font-size:1rem;
-  cursor:pointer;
-  font-weight:bold;
-}
+    #sendPrompt {
+      background:#6c6c6c;
+      color:white;
+      border:none;
+      font-weight:700;
+      margin-top:10px;
+      padding:13px 20px;
+      border-radius:40px;
+      cursor:pointer;
+      width:100%;
+    }
 
-#sendPrompt:hover { background:#555; }
+    #sendPrompt:hover { filter:brightness(.9); }
 
-#responseBox {
-  display:none;
-  background:#f1f1f1;
-  padding:12px;
-  border-radius:10px;
-  margin-top:10px;
-  white-space:pre-line;
-}
+    #responseBox {
+      display:none;
+      background:#F4F4F4;
+      border-radius:8px;
+      padding:12px;
+      margin-top:10px;
+      min-height:40px;
+      color:#2E2E2E;
+      white-space:pre-line;
+    }
 
-#addHistorySection {
-  grid-column:span 2;
-  display:none;
-}
+    /* ---------------- HISTORIAL ---------------- */
 
-#piezaID {
-  width:200px;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #666;
-}
+    .history-box {
+      margin-top:20px;
+      padding:15px;
+      background:#f7f7f7;
+      border-radius:12px;
+      display:none;
+    }
 
-#addHistoryBtn {
-  padding:10px 18px;
-  background:var(--main-color);
-  color:white;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:bold;
-}
+    .history-row {
+      display:flex;
+      gap:15px;
+      align-items:center;
+      margin-bottom:15px;
+    }
 
-#addHistoryBtn:hover { filter:brightness(.9); }
+    .history-row input {
+      flex:1;
+      padding:10px;
+      border:1px solid #aaa;
+      border-radius:10px;
+    }
 
-/* TABLA HISTORIAL */
-table {
-  width:100%;
-  border-collapse:collapse;
-  margin-top:20px;
-  background:white;
-  border-radius:10px;
-  display:none; /* oculto al inicio */
-}
+    .history-row button {
+      padding:10px 20px;
+      background:var(--main-color);
+      color:white;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+    }
 
-th, td {
-  padding:10px;
-  border-bottom:1px solid #ccc;
-  word-break:break-word;
-}
+    .history-row button:hover { filter:brightness(.9); }
 
-th {
-  background:#e6e6e6;
-}
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:15px;
+      background:white;
+      border-radius:10px;
+      font-size:0.75rem; /* 25% más pequeño */
+      display:none;
+    }
 
-.red {
-  color:#C8102E;
-  font-weight:bold;
-}
-</style>
+    th, td {
+      padding:8px;
+      border-bottom:1px solid #ccc;
+      text-align:left;
+    }
+
+    th { background:#e6e6e6; }
+
+    .red { color:red; font-weight:bold; }
+  </style>
 </head>
 
 <body>
-<div class="container">
+  <div class="container">
 
-  <div class="logo-container">
-    <img src="FRISA.png" width="120">
+    <div class="logo-container">
+      <img src="FRISA.png" width="120">
+    </div>
+
+    <h1>Clasificador de Imágenes</h1>
+
+    <!-- COLUMNA IZQUIERDA -->
+    <div>
+      <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No defectuosa</b>.</p>
+
+      <input type="file" id="imageInput">
+      <img id="preview">
+      <p id="result"></p>
+
+      <!-- CUADRO DE ID Y BOTÓN -->
+      <div class="history-box" id="historyBox">
+        <div class="history-row">
+          <input id="piezaID" placeholder="ID pieza (ej: AAA-555)">
+          <button id="addHistoryBtn">Añadir al historial</button>
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>ID pieza</th>
+            <th>TiempoDelta<br>Maquinados</th>
+            <th>ConfAlturaCaliente<br>Rolas</th>
+            <th>TiempoEn<br>Horno</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- IA -->
+    <div class="helpdesk">
+      <h2>💬 Asistente IA FRISA</h2>
+
+      <textarea id="promptInput" placeholder="Pregunta algo sobre la pieza..."></textarea>
+      <button id="sendPrompt">Preguntar a la IA</button>
+      <div id="responseBox"></div>
+    </div>
+
+    <footer>🧠 FRISA | Clasificador + Asistente IA</footer>
+
   </div>
 
-  <h1>Clasificador de Imágenes</h1>
-
-  <!-- COLUMNA IZQUIERDA -->
-  <div>
-    <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No defectuosa</b>.</p>
-    <input type="file" id="imageInput" accept="image/*">
-    <img id="preview">
-    <p id="result"></p>
-  </div>
-
-  <!-- COLUMNA DERECHA (Asistente IA) -->
-  <div>
-    <h2>💬 Asistente IA FRISA</h2>
-    <textarea id="promptInput" placeholder="Haz una pregunta..."></textarea>
-    <button id="sendPrompt">Preguntar a la IA</button>
-    <div id="responseBox"></div>
-  </div>
-
-  <!-- SECCIÓN DE AÑADIR HISTORIAL -->
-  <div id="addHistorySection">
-    <label>ID pieza&nbsp;</label>
-    <input id="piezaID" placeholder="AAA-555">
-    <button id="addHistoryBtn">Añadir al historial</button>
-  </div>
-
-  <!-- TABLA -->
-  <table id="historyTable">
-    <thead>
-      <tr>
-        <th>ID pieza</th>
-        <th>TiempoDelta<br>Maquinados</th>
-        <th>ConfAlturaCaliente<br>Rolas</th>
-        <th>TiempoEnHorno<br>Hornos</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <footer>🧠 FRISA | Clasificador + Asistente IA</footer>
-</div>
-
-<canvas id="cropCanvas" style="display:none;"></canvas>
+  <canvas id="cropCanvas" style="display:none;"></canvas>
 
 <script>
 let model, metadata;
 let lastPredictionJson = null;
 let lastImageB64 = null;
 
-/* ------------------- CARGAR MODELO ------------------- */
 async function loadModel() {
   model = await tf.loadLayersModel("model.json");
   const meta = await fetch("metadata.json");
   metadata = await meta.json();
 }
 
-/* ------------------- CLASIFICACIÓN ------------------- */
+// ------------ CLASIFICACIÓN ------------
 async function predict() {
   const img = document.getElementById("preview");
   const resultBox = document.getElementById("result");
 
   const size = Math.min(img.width, img.height);
-  const sx = (img.width - size)/2;
-  const sy = (img.height - size)/2;
+  let sx = (img.width - size) / 2;
+  let sy = (img.height - size) / 2;
 
-  const tensor = tf.browser.fromPixels(img)
-    .slice([sy,sx,0],[size,size,3])
-    .resizeBilinear([metadata.imageSize,metadata.imageSize])
+  let tensor = tf.browser.fromPixels(img)
+    .slice([sy, sx, 0], [size, size, 3])
+    .resizeBilinear([metadata.imageSize, metadata.imageSize])
     .toFloat().div(127.5).sub(1).expandDims(0);
 
-  let logits = model.predict(tensor);
-  if (!Array.isArray(logits)) logits = tf.softmax(logits);
+  let logits = tf.softmax(model.predict(tensor));
   const prediction = await logits.data();
-  tf.dispose([tensor,logits]);
+  tf.dispose([tensor, logits]);
 
   const labels = metadata.labels;
-  const results = Array.from(prediction).map((p,i)=>({
-    label:labels[i],
-    prob:(p*100).toFixed(2)
-  })).sort((a,b)=>b.prob - a.prob);
+
+  const results = Array.from(prediction).map((p, i) => ({
+    label: labels[i], prob: (p*100).toFixed(2)
+  })).sort((a,b)=>b.prob-a.prob);
 
   lastPredictionJson = JSON.stringify(results);
 
   const top = results[0];
   resultBox.textContent = `Predicción: ${top.label} (${top.prob}%)`;
-  resultBox.style.display="block";
+  resultBox.style.display = "block";
 
-  resultBox.className = top.label.toLowerCase().includes("no")
-      ? "no_defectuosa" : "defectuosa";
+  document.getElementById("historyBox").style.display = "block";
 
-  /* Mostrar sección de historial */
-  document.getElementById("addHistorySection").style.display = "block";
+  if (top.label.toLowerCase().includes("no"))
+      resultBox.className = "no_defectuosa";
+  else
+      resultBox.className = "defectuosa";
 
-  /* Guardar imagen en Base64 */
   const canvas = document.getElementById("cropCanvas");
   canvas.width = metadata.imageSize;
   canvas.height = metadata.imageSize;
-
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, sx, sy, size, size, 0,0,metadata.imageSize,metadata.imageSize);
-  lastImageB64 = canvas.toDataURL("image/jpeg",0.9).split(",")[1];
+
+  ctx.drawImage(img, sx, sy, size, size, 0, 0, metadata.imageSize, metadata.imageSize);
+  lastImageB64 = canvas.toDataURL("image/jpeg", 0.9).split(",")[1];
 }
 
-/* Cargar imagen */
 document.getElementById("imageInput").onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
   const img = document.getElementById("preview");
   img.src = URL.createObjectURL(file);
-  img.onload = ()=>{ img.style.display="block"; predict(); };
+  img.onload = () => {
+    img.style.display = "block";
+    predict();
+  };
 };
 
-/* ---------------- ASISTENTE IA ---------------- */
-document.getElementById("sendPrompt").onclick = async ()=>{
-  const prompt = document.getElementById("promptInput").value.trim();
-  const box = document.getElementById("responseBox");
-  if(!prompt) return alert("Escribe una pregunta.");
-  box.style.display="block";
-  box.innerHTML="💭 Consultando IA...";
-
-  const res = await fetch("/api/aoai-chat",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ prompt, prediccionJson:lastPredictionJson, imageB64:lastImageB64 })
-  });
-
-  const data = await res.json();
-  let texto = data.answer || data.reply || "";
-
-  texto = texto.replace(/\*\*(.*?)\*\*/g,"<b>$1</b>").replace(/\n\n/g,"<br><br>").replace(/\n/g,"<br>");
-  box.innerHTML = texto;
-};
-
-/* ---------------- HISTORIAL ---------------- */
+// ------------ AÑADIR AL HISTORIAL ------------
 document.getElementById("addHistoryBtn").onclick = () => {
   const piezaID = document.getElementById("piezaID").value.trim();
   if (!piezaID) return alert("Ingrese el ID de la pieza.");
@@ -294,12 +285,28 @@ document.getElementById("addHistoryBtn").onclick = () => {
   const tabla = document.getElementById("historyTable");
   const tbody = tabla.querySelector("tbody");
 
+  let valores;
+
+  if (piezaID.toUpperCase().startsWith("O")) {
+    valores = {
+      delta: `80`,
+      rolas: `15`,
+      horno: `19`
+    };
+  } else {
+    valores = {
+      delta: `<span class="red">125</span>`,
+      rolas: `12`,
+      horno: `17`
+    };
+  }
+
   tbody.innerHTML += `
     <tr>
       <td>${piezaID}</td>
-      <td class="red">125</td>
-      <td>12</td>
-      <td>17</td>
+      <td>${valores.delta}</td>
+      <td>${valores.rolas}</td>
+      <td>${valores.horno}</td>
     </tr>
   `;
 
@@ -310,11 +317,48 @@ document.getElementById("addHistoryBtn").onclick = () => {
 
 function resetApp() {
   document.getElementById("preview").style.display = "none";
+  document.getElementById("preview").src = "";
   document.getElementById("result").style.display = "none";
-  document.getElementById("addHistorySection").style.display = "none";
-  document.getElementById("piezaID").value = "";
   document.getElementById("imageInput").value = "";
+  document.getElementById("piezaID").value = "";
+  document.getElementById("historyBox").style.display = "none";
 }
+
+// ------------ IA ------------
+document.getElementById("sendPrompt").onclick = async () => {
+  const prompt = document.getElementById("promptInput").value.trim();
+  const box = document.getElementById("responseBox");
+  if (!prompt) return alert("Escribe una pregunta.");
+
+  box.style.display = "block";
+  box.innerHTML = "💭 Consultando IA...";
+
+  try {
+    const res = await fetch("/api/aoai-chat", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        prompt,
+        prediccionJson:lastPredictionJson,
+        imageB64:lastImageB64
+      })
+    });
+
+    const data = await res.json();
+    let texto = data.answer || data.reply || data.message || "";
+
+    texto = texto
+      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+
+    box.innerHTML = texto;
+
+  } catch (err) {
+    box.innerHTML = "❌ Error de conexión con el servidor.";
+  }
+};
+
 loadModel();
 </script>
 
