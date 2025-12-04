@@ -56,30 +56,76 @@
       border-radius:10px; display:none;
     }
 
-    #result.defectuosa {
-      background:rgba(200,16,46,0.15);
-      border:1px solid var(--main-color);
-      color:var(--main-color);
+    #result.defectuosa { background:rgba(200,16,46,0.15); border:1px solid var(--main-color); color:var(--main-color); }
+    #result.no_defectuosa { background:rgba(125,125,125,0.15); border:1px solid var(--neutral-color); color:var(--neutral-color); }
+
+    /* ------------------------- */
+    /*   CAMPO ID DE LA PIEZA   */
+    /* ------------------------- */
+    .id-box {
+      margin-top:15px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      display:none;
     }
 
-    #result.no_defectuosa {
-      background:rgba(125,125,125,0.15);
-      border:1px solid var(--neutral-color);
-      color:var(--neutral-color);
+    .id-box input {
+      flex:1;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #CCC;
+      font-size:15px;
+      background:#F5F5F5;
     }
 
     #addHistoryBtn {
-      margin-top:15px;
       padding:10px 16px;
       background:var(--main-color);
       color:white;
       border:none;
       border-radius:8px;
       cursor:pointer;
-      display:none;
       font-weight:700;
     }
 
+    /* ----------------------------- */
+    /*   BOTÓN PREGUNTAR A LA IA    */
+    /* ----------------------------- */
+    #sendPrompt {
+      width:100%;
+      margin-top:10px;
+      padding:14px;
+      background:#6E6E6E;
+      color:white;
+      border:none;
+      border-radius:25px; /* 👈 redondo */
+      cursor:pointer;
+      font-weight:700;
+      font-size:15px;
+    }
+
+    #sendPrompt:hover { filter:brightness(.8); }
+
+    textarea {
+      width:100%; min-height:90px;
+      padding:10px; border-radius:8px; border:1px solid #7D7D7D;
+    }
+
+    #responseBox {
+      display:none;
+      background:#F4F4F4;
+      border-radius:8px;
+      padding:12px;
+      margin-top:10px;
+      min-height:40px;
+      color:#2E2E2E;
+      white-space:pre-line;
+    }
+
+    /* ----------------------------- */
+    /* TABLA HISTORIAL              */
+    /* ----------------------------- */
     table {
       width:100%;
       border-collapse:collapse;
@@ -96,7 +142,7 @@
       padding:6px;
       font-size:14px;
       line-height:16px;
-      white-space:pre-line; /* permite saltos en el header */
+      white-space:pre-line;
     }
 
     td {
@@ -126,7 +172,12 @@
 
       <p id="result"></p>
 
-      <button id="addHistoryBtn">Añadir al historial</button>
+      <!-- ⭐ CAMPO PARA ID DE PIEZA DENTRO DE LA PÁGINA -->
+      <div class="id-box" id="idBox">
+        <label style="font-weight:bold;">ID pieza</label>
+        <input id="piezaID" placeholder="Ej: AAA-555">
+        <button id="addHistoryBtn">Añadir al historial</button>
+      </div>
 
       <table id="historyTable">
         <thead>
@@ -147,6 +198,7 @@
 
       <textarea id="promptInput" placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
 
+      <!-- 🔥 BOTÓN DE IA MODIFICADO A GRIS Y REDONDO -->
       <button id="sendPrompt">Preguntar a la IA</button>
 
       <div id="responseBox"></div>
@@ -168,11 +220,13 @@ async function loadModel() {
   metadata = await meta.json();
 }
 
-// --- CLASIFICACIÓN ---
+/* --------------------------
+   CLASIFICACIÓN
+--------------------------- */
 async function predict() {
   const img = document.getElementById("preview");
   const resultBox = document.getElementById("result");
-  const addBtn = document.getElementById("addHistoryBtn");
+  const idBox = document.getElementById("idBox");
 
   const size = Math.min(img.width, img.height);
   const sx = (img.width - size) / 2;
@@ -197,7 +251,6 @@ async function predict() {
   })).sort((a,b)=>b.prob-a.prob);
 
   lastPredictionJson = JSON.stringify(results);
-
   const top = results[0];
 
   resultBox.textContent = `Predicción: ${top.label} (${top.prob}%)`;
@@ -208,7 +261,7 @@ async function predict() {
   else
       resultBox.className = "defectuosa";
 
-  addBtn.style.display = "inline-block";
+  document.getElementById("idBox").style.display = "flex";
 
   const canvas = document.getElementById("cropCanvas");
   canvas.width = metadata.imageSize;
@@ -232,13 +285,12 @@ document.getElementById("imageInput").onchange = e => {
   };
 };
 
-// ===================================
-// ✅ BOTÓN "AÑADIR AL HISTORIAL"
-// ===================================
+/* ------------------------------------
+   AÑADIR AL HISTORIAL DESDE EL CAMPO
+------------------------------------- */
 document.getElementById("addHistoryBtn").onclick = () => {
-  const piezaID = prompt("Ingrese el ID de la pieza (ej: AAA-555):");
-
-  if (!piezaID) return;
+  const piezaID = document.getElementById("piezaID").value.trim();
+  if (!piezaID) return alert("Ingrese el ID de la pieza.");
 
   const tbody = document.querySelector("#historyTable tbody");
 
@@ -253,27 +305,27 @@ document.getElementById("addHistoryBtn").onclick = () => {
 
   tbody.innerHTML += row;
 
-  // 🔥 Reiniciar la app para cargar una nueva imagen
   resetApp();
 };
 
-// ===================================
-// 🔄 FUNCIÓN PARA REINICIAR APP
-// ===================================
+/* --------------------------
+   REINICIAR APP
+--------------------------- */
 function resetApp() {
   document.getElementById("preview").style.display = "none";
   document.getElementById("preview").src = "";
   document.getElementById("imageInput").value = "";
   document.getElementById("result").innerHTML = "";
   document.getElementById("result").style.display = "none";
-  document.getElementById("addHistoryBtn").style.display = "none";
+  document.getElementById("idBox").style.display = "none";
+  document.getElementById("piezaID").value = "";
   lastImageB64 = null;
   lastPredictionJson = null;
 }
 
-// ===================================
-// 🔥 ASISTENTE IA
-// ===================================
+/* --------------------------
+   ASISTENTE IA
+--------------------------- */
 document.getElementById("sendPrompt").onclick = async () => {
   const prompt = document.getElementById("promptInput").value.trim();
   const box = document.getElementById("responseBox");
