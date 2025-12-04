@@ -218,7 +218,6 @@
 </head>
 <body>
   <div class="container">
-
     <div class="logo-container">
       <img src="FRISA.png" alt="Logo FRISA">
     </div>
@@ -227,7 +226,6 @@
 
     <div>
       <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No Defectuosa</b>.</p>
-
       <input type="file" id="imageInput" accept="image/*">
       <img id="preview" alt="Previsualización">
       <div class="loader" id="loader"></div>
@@ -236,17 +234,12 @@
 
     <div class="helpdesk">
       <h2>💬 Asistente IA FRISA</h2>
-      <p style="font-size:0.9rem; color:#555; margin-bottom:8px;">
-        Haz preguntas sobre el resultado, el estado de la pieza o recomendaciones de acción.
-      </p>
-
       <textarea id="promptInput" placeholder="Escribe tu pregunta o solicitud..."></textarea>
       <button id="sendPrompt">Preguntar a la IA</button>
-      <div id="responseBox">Esperando mensaje...</div>
+      <div id="responseBox">(sin respuesta generada)</div>
     </div>
 
     <footer>🧠 FRISA | Clasificador + Asistente IA</footer>
-
   </div>
 
   <canvas id="cropCanvas" style="display:none;"></canvas>
@@ -260,7 +253,6 @@
       model = await tf.loadLayersModel('model.json');
       const metaResponse = await fetch('metadata.json');
       metadata = await metaResponse.json();
-      console.log("Modelo y metadata cargados correctamente");
     }
 
     async function predict() {
@@ -301,29 +293,23 @@
 
       lastPredictionJson = JSON.stringify(results);
 
-      try {
-        const canvas = document.getElementById('cropCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = metadata.imageSize;
-        canvas.height = metadata.imageSize;
+      const canvas = document.getElementById('cropCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = metadata.imageSize;
+      canvas.height = metadata.imageSize;
 
-        ctx.drawImage(
-          imgElement,
-          startX, startY, size, size,
-          0, 0, metadata.imageSize, metadata.imageSize
-        );
+      ctx.drawImage(
+        imgElement,
+        startX, startY, size, size,
+        0, 0, metadata.imageSize, metadata.imageSize
+      );
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        lastImageB64 = dataUrl.split(',')[1] || null;
-      } catch (e) {
-        console.warn('No se pudo generar base64:', e);
-        lastImageB64 = null;
-      }
+      lastImageB64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
       resultBox.textContent = `Predicción: ${top.label} (${top.probability}%)`;
 
       resultBox.className = "";
-      if (top.label.toLowerCase().includes("non") || top.label.toLowerCase().includes("no")) {
+      if (top.label.toLowerCase().includes("no")) {
         resultBox.classList.add("no_defectuosa");
       } else {
         resultBox.classList.add("defectuosa");
@@ -352,7 +338,7 @@
         return;
       }
 
-      box.textContent = "💭 Consultando al asistente IA...";
+      box.textContent = "💭 Consultando IA...";
 
       try {
         const res = await fetch('/api/aoai-chat', {
@@ -368,14 +354,14 @@
         const data = await res.json();
 
         if (!res.ok || data.error) {
-          box.textContent = `❌ Error: ${data.error || 'Error al llamar a /api/aoai-chat'}`;
+          box.textContent = `❌ Error IA: ${data.error}`;
           return;
         }
 
-        box.textContent = data.reply || "(sin respuesta generada)";
+        box.textContent = data.respuesta || "(sin respuesta generada)";
       } catch (err) {
         console.error(err);
-        box.textContent = "❌ Error de conexión con el servidor.";
+        box.textContent = "❌ Error al conectar con el servidor IA";
       }
     });
 
