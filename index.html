@@ -24,7 +24,7 @@
       color:#2E2E2E;
       border-radius:16px;
       padding:40px;
-      width:900px;
+      width:950px;
       max-width:100%;
       box-shadow:0 8px 32px rgba(0,0,0,0.25);
       display:grid;
@@ -68,6 +68,20 @@
       color:var(--neutral-color);
     }
 
+    #addHistoryBtn {
+      margin-top:15px;
+      padding:10px 16px;
+      background:var(--main-color);
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      display:none;
+      font-weight:700;
+    }
+
+    #addHistoryBtn:hover { filter:brightness(.9); }
+
     textarea {
       width:100%; min-height:90px;
       padding:10px; border-radius:8px; border:1px solid #7D7D7D;
@@ -94,6 +108,32 @@
       color:#2E2E2E;
       white-space:pre-line;
     }
+
+    /* Tabla Historial */
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:20px;
+      background:white;
+      border-radius:12px;
+      overflow:hidden;
+    }
+
+    table th {
+      background:#C8102E;
+      color:white;
+      padding:10px;
+    }
+
+    table td {
+      padding:10px;
+      border-bottom:1px solid #ddd;
+    }
+
+    .red {
+      color:#C8102E;
+      font-weight:bold;
+    }
   </style>
 </head>
 
@@ -114,6 +154,21 @@
       <img id="preview">
 
       <p id="result"></p>
+
+      <button id="addHistoryBtn">Añadir al historial</button>
+
+      <!-- TABLA HISTORIAL -->
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>ID Pieza</th>
+            <th>TiempoDelta_Maquinados</th>
+            <th>ConfAlturaCaliente_Rolas</th>
+            <th>TiempoEnHorno_Hornos</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <!-- ASISTENTE IA -->
@@ -147,6 +202,7 @@ async function loadModel() {
 async function predict() {
   const img = document.getElementById("preview");
   const resultBox = document.getElementById("result");
+  const addBtn = document.getElementById("addHistoryBtn");
 
   const size = Math.min(img.width, img.height);
   const sx = (img.width - size) / 2;
@@ -182,6 +238,8 @@ async function predict() {
   else
       resultBox.className = "defectuosa";
 
+  addBtn.style.display = "inline-block";
+
   const canvas = document.getElementById("cropCanvas");
   canvas.width = metadata.imageSize;
   canvas.height = metadata.imageSize;
@@ -205,7 +263,29 @@ document.getElementById("imageInput").onchange = e => {
 };
 
 // ===================================
-// 🔥 BOTÓN DEL ASISTENTE IA
+// ✅ BOTÓN "AÑADIR AL HISTORIAL"
+// ===================================
+document.getElementById("addHistoryBtn").onclick = () => {
+  const piezaID = prompt("Ingrese el ID de la pieza (ej: AAA-555):");
+
+  if (!piezaID) return;
+
+  const tbody = document.querySelector("#historyTable tbody");
+
+  const row = `
+    <tr>
+      <td>${piezaID}</td>
+      <td class="red">125</td>
+      <td>12</td>
+      <td>17</td>
+    </tr>
+  `;
+
+  tbody.innerHTML += row;
+};
+
+// ===================================
+// 🔥 ASISTENTE IA
 // ===================================
 document.getElementById("sendPrompt").onclick = async () => {
   const prompt = document.getElementById("promptInput").value.trim();
@@ -230,7 +310,6 @@ document.getElementById("sendPrompt").onclick = async () => {
     const data = await res.json();
     let texto = data.answer || data.reply || data.message || "";
 
-    // 🔥 FORMATEO DEL TEXTO
     texto = texto
       .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
       .replace(/\n\n/g, "<br><br>")
@@ -239,7 +318,6 @@ document.getElementById("sendPrompt").onclick = async () => {
     box.innerHTML = texto;
 
   } catch (err) {
-    console.error(err);
     box.innerHTML = "❌ Error de conexión con el servidor.";
   }
 };
