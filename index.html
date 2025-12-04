@@ -10,27 +10,33 @@
     :root { --main-color:#C8102E; --neutral-color:#7D7D7D; }
     * { box-sizing:border-box; }
 
-    body {
-      font-family:"Inter",sans-serif;
-      background:#2E2E2E;
-      color:#FFF;
-      display:flex;
-      justify-content:center;
-      padding:20px;
-    }
+  body {
+    font-family:"Inter",sans-serif;
+    background:white;       /*  ← fondo totalmente blanco */
+    color:#2E2E2E;          /*  ← texto oscuro */
+    min-height:100vh;       /*  ← cubre toda la pantalla */
+    margin:0;
+    padding:0;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start; /*  ← para centrar el contenido arriba */
+}
 
-    .container {
-      background:white;
-      color:#2E2E2E;
-      border-radius:16px;
-      padding:40px;
-      width:900px;
-      max-width:100%;
-      box-shadow:0 8px 32px rgba(0,0,0,0.25);
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:40px;
-    }
+
+  .container {
+    background:white;
+    color:#2E2E2E;
+    border-radius:16px;
+    padding:40px;
+    width:900px;
+    max-width:100%;
+    margin-top:40px; /* ← separa del borde superior */
+    box-shadow:0 8px 32px rgba(0,0,0,0.15);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:40px;
+}
+
 
     .logo-container, h1, footer {
       grid-column:span 2;
