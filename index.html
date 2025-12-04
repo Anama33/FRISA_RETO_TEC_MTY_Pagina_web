@@ -235,7 +235,16 @@ document.getElementById("sendPrompt").onclick = async () => {
       return;
     }
 
-    box.textContent = data.reply || "⚠️ La IA no generó respuesta.";
+    // 🔥 CORRECCIÓN: aceptar cualquier nombre de campo
+    const respuesta =
+      data.reply ||
+      data.response ||
+      data.respuesta ||
+      data.message;
+
+    box.textContent = respuesta
+      ? respuesta.trim()
+      : "⚠️ La IA no generó respuesta.";
   }
   catch (err) {
     box.textContent = "❌ Error de conexión con el servidor.";
