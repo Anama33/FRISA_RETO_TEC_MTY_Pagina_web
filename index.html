@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clasificador FRISA + Asistente IA (Azure OpenAI)</title>
+  <title>Clasificador FRISA + Asistente IA</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
   <style>
     :root {
@@ -121,7 +121,7 @@
       margin-bottom: 8px;
     }
 
-    input[type="text"], input[type="password"], textarea {
+    textarea {
       width: 100%;
       padding: 8px;
       border-radius: 8px;
@@ -129,6 +129,7 @@
       margin-bottom: 8px;
       font-size: 0.9rem;
       color: #2E2E2E;
+      min-height: 80px;
     }
 
     #sendPrompt {
@@ -158,14 +159,8 @@
       white-space: pre-wrap;
     }
 
-    /* ====================================================================== */
-    /* --- RESPONSIVE PARA LAPTOP Y PANTALLAS GRANDES ---------------------- */
-    /* ====================================================================== */
     @media (min-width: 900px) {
-
-      body {
-        justify-content: center;
-      }
+      body { justify-content: center; }
 
       .container {
         width: 900px;
@@ -208,9 +203,6 @@
       }
     }
 
-    /* ====================================================================== */
-    /* --- RESPONSIVE PARA TABLETS ----------------------------------------- */
-    /* ====================================================================== */
     @media (min-width: 600px) and (max-width: 899px) {
       .container {
         width: 600px;
@@ -222,7 +214,6 @@
         height: 240px;
       }
     }
-
   </style>
 </head>
 <body>
@@ -243,26 +234,27 @@
       <p id="result">Esperando imagen...</p>
     </div>
 
-    <!-- --- Helpdesk --- -->
     <div class="helpdesk">
-      <h2>💬 Asistente IA (Azure OpenAI)</h2>
+      <h2>💬 Asistente IA FRISA</h2>
+      <p style="font-size:0.9rem; color:#555; margin-bottom:8px;">
+        Haz preguntas sobre el resultado, el estado de la pieza o recomendaciones de acción.
+      </p>
 
-      <input type="text" id="endpointInput" placeholder="https://TU_ENDPOINT.openai.azure.com/">
-      <input type="text" id="deploymentInput" placeholder="Nombre del deployment (ej: gpt-4o)">
-      <input type="password" id="apiKeyInput" placeholder="Tu API Key de Azure OpenAI">
-      
       <textarea id="promptInput" placeholder="Escribe tu pregunta o solicitud..."></textarea>
-      <button id="sendPrompt">Enviar a Azure OpenAI</button>
+      <button id="sendPrompt">Preguntar a la IA</button>
       <div id="responseBox">Esperando mensaje...</div>
     </div>
 
-    <footer>🧠 FRISA | Clasificador + Asistente Azure OpenAI GPT-4o</footer>
+    <footer>🧠 FRISA | Clasificador + Asistente IA</footer>
 
   </div>
 
-  <!-- SCRIPT IGUAL -->
+  <canvas id="cropCanvas" style="display:none;"></canvas>
+
   <script>
     let model, metadata;
+    let lastPredictionJson = null;
+    let lastImageB64 = null;
 
     async function loadModel() {
       model = await tf.loadLayersModel('model.json');
@@ -306,6 +298,28 @@
       results.sort((a, b) => b.probability - a.probability);
 
       const top = results[0];
+
+      lastPredictionJson = JSON.stringify(results);
+
+      try {
+        const canvas = document.getElementById('cropCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = metadata.imageSize;
+        canvas.height = metadata.imageSize;
+
+        ctx.drawImage(
+          imgElement,
+          startX, startY, size, size,
+          0, 0, metadata.imageSize, metadata.imageSize
+        );
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        lastImageB64 = dataUrl.split(',')[1] || null;
+      } catch (e) {
+        console.warn('No se pudo generar base64:', e);
+        lastImageB64 = null;
+      }
+
       resultBox.textContent = `Predicción: ${top.label} (${top.probability}%)`;
 
       resultBox.className = "";
@@ -330,48 +344,38 @@
     });
 
     document.getElementById('sendPrompt').addEventListener('click', async () => {
-      const endpoint = document.getElementById('endpointInput').value.trim();
-      const deployment = document.getElementById('deploymentInput').value.trim();
-      const apiKey = document.getElementById('apiKeyInput').value.trim();
       const prompt = document.getElementById('promptInput').value.trim();
       const box = document.getElementById('responseBox');
 
-      if (!endpoint || !deployment || !apiKey) {
-        alert("⚠️ Completa los campos: Endpoint, Deployment y API Key.");
+      if (!prompt) {
+        alert("Escribe una pregunta primero.");
         return;
       }
-      if (!prompt) return alert("Escribe una pregunta primero.");
 
-      box.textContent = "💭 Enviando solicitud a Azure OpenAI...";
+      box.textContent = "💭 Consultando al asistente IA...";
 
       try {
-        const url = `${endpoint}openai/deployments/${deployment}/chat/completions?api-version=2024-12-01-preview`;
-
-        const res = await fetch(url, {
+        const res = await fetch('/api/aoai-chat', {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "api-key": apiKey
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: [
-              { role: "system", content: "Eres un asistente técnico de soporte de FRISA, claro y servicial." },
-              { role: "user", content: prompt }
-            ],
-            max_tokens: 1024,
-          })
+            prompt,
+            prediccionJson: lastPredictionJson,
+            imageB64: lastImageB64
+          }),
         });
 
         const data = await res.json();
-        if (data.error) {
-          box.textContent = `❌ Error: ${data.error.message}`;
+
+        if (!res.ok || data.error) {
+          box.textContent = `❌ Error: ${data.error || 'Error al llamar a /api/aoai-chat'}`;
           return;
         }
 
-        const reply = data.choices?.[0]?.message?.content;
-        box.textContent = reply ? reply.trim() : "⚠️ No se recibió respuesta del modelo.";
+        box.textContent = data.reply || "(sin respuesta generada)";
       } catch (err) {
-        box.textContent = "❌ Error de conexión o datos incorrectos.";
+        console.error(err);
+        box.textContent = "❌ Error de conexión con el servidor.";
       }
     });
 
