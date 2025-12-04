@@ -101,7 +101,7 @@
   <div class="container">
 
     <div class="logo-container">
-      <img src="FRISA.png" width="120" alt="FRISA">
+      <img src="FRISA.png" width="120">
     </div>
 
     <h1>Clasificador de Imágenes</h1>
@@ -111,17 +111,16 @@
       <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No defectuosa</b>.</p>
 
       <input type="file" id="imageInput" accept="image/*">
-      <img id="preview" alt="Previsualización">
+      <img id="preview">
 
       <p id="result"></p>
     </div>
 
-    <!-- COLUMNA DERECHA (ASISTENTE Azure vía Backend) -->
+    <!-- ASISTENTE IA -->
     <div class="helpdesk">
       <h2>💬 Asistente IA FRISA</h2>
 
-      <textarea id="promptInput"
-        placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
+      <textarea id="promptInput" placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
 
       <button id="sendPrompt">Preguntar a la IA</button>
 
@@ -142,7 +141,6 @@ async function loadModel() {
   model = await tf.loadLayersModel("model.json");
   const meta = await fetch("metadata.json");
   metadata = await meta.json();
-  console.log("✅ Modelo y metadata cargados");
 }
 
 // --- CLASIFICACIÓN ---
@@ -184,7 +182,6 @@ async function predict() {
   else
       resultBox.className = "defectuosa";
 
-  // Guardar imagen recortada en Base64 para el asistente
   const canvas = document.getElementById("cropCanvas");
   canvas.width = metadata.imageSize;
   canvas.height = metadata.imageSize;
@@ -207,17 +204,14 @@ document.getElementById("imageInput").onchange = e => {
   };
 };
 
-// =============================
-// 🔥 ASISTENTE IA VIA BACKEND
-// =============================
+// ===================================
+// 🔥 BOTÓN DEL ASISTENTE IA
+// ===================================
 document.getElementById("sendPrompt").onclick = async () => {
   const prompt = document.getElementById("promptInput").value.trim();
   const box = document.getElementById("responseBox");
 
-  if (!prompt) {
-    alert("Escribe una pregunta.");
-    return;
-  }
+  if (!prompt) return alert("Escribe una pregunta.");
 
   box.style.display = "block";
   box.innerHTML = "💭 Consultando IA...";
@@ -233,33 +227,15 @@ document.getElementById("sendPrompt").onclick = async () => {
       })
     });
 
-    let data = await res.json();
-    console.log("Respuesta del servidor:", data);
+    const data = await res.json();
+    let texto = data.answer || data.reply || data.message || "";
 
-    // ===============================
-    // 🔥 EXTRAER respuesta correcta
-    // ===============================
-    let texto = data.answer || data.reply || data.response || data.message || null;
+    // 🔥 FORMATEO DEL TEXTO
+    texto = texto
+      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/\n/g, "<br>");
 
-    if (!texto) {
-      box.innerHTML = "⚠️ El servidor respondió sin texto.";
-      return;
-    }
-
-    // ===============================
-    // 🔥 LIMPIAR FORMATO
-    // ===============================
-
-    // Saltos de línea → párrafos HTML
-    texto = texto.replace(/\n\n/g, "<br><br>");
-    texto = texto.replace(/\n/g, "<br>");
-
-    // **negrita** → <b>negrita</b>
-    texto = texto.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
-
-    // ===============================
-    // 🔥 MOSTRAR TEXTO FORMATEADO
-    // ===============================
     box.innerHTML = texto;
 
   } catch (err) {
@@ -267,6 +243,9 @@ document.getElementById("sendPrompt").onclick = async () => {
     box.innerHTML = "❌ Error de conexión con el servidor.";
   }
 };
+
+loadModel();
+</script>
 
 </body>
 </html>
