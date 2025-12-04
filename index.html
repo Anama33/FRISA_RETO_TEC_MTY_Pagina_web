@@ -3,379 +3,247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clasificador FRISA + Asistente IA (Azure OpenAI)</title>
+  <title>Clasificador FRISA + Asistente IA</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4"></script>
-  <style>
-    :root {
-      --main-color: #C8102E;
-      --neutral-color: #7D7D7D;
-    }
 
-    * { box-sizing: border-box; transition: all 0.3s ease; }
+  <style>
+    :root { --main-color:#C8102E; --neutral-color:#7D7D7D; }
+    * { box-sizing:border-box; }
 
     body {
-      font-family: "Inter", system-ui, sans-serif;
-      background: #2E2E2E;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #FFFFFF;
-      padding: 20px;
+      font-family:"Inter",sans-serif;
+      background:#2E2E2E;
+      color:#FFF;
+      display:flex;
+      justify-content:center;
+      padding:20px;
     }
 
     .container {
-      background: #FFFFFF;
-      border-radius: 16px;
-      padding: 40px 30px;
-      text-align: center;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-      width: 420px;
-      max-width: 100%;
-      color: #2E2E2E;
+      background:white;
+      color:#2E2E2E;
+      border-radius:16px;
+      padding:40px;
+      width:900px;
+      max-width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.25);
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:40px;
     }
 
-    .logo-container img {
-      width: 120px;
-      height: auto;
-      margin-bottom: 10px;
+    .logo-container, h1, footer {
+      grid-column:span 2;
+      text-align:center;
     }
 
-    h1 {
-      color: var(--main-color);
-      margin-bottom: 10px;
+    input[type="file"]{
+      width:100%; padding:12px;
+      border:2px dashed var(--main-color);
+      border-radius:10px;
+      cursor:pointer;
+      background:#F9F9F9;
     }
 
-    input[type="file"] {
-      background: #F9F9F9;
-      border: 2px dashed var(--main-color);
-      border-radius: 10px;
-      padding: 12px;
-      width: 100%;
-      cursor: pointer;
-      color: #2E2E2E;
-    }
-
-    img#preview {
-      margin-top: 20px;
-      border-radius: 12px;
-      width: 224px;
-      height: 224px;
-      object-fit: cover;
-      display: none;
-      border: 3px solid var(--main-color);
+    #preview {
+      margin-top:20px; width:260px; height:260px;
+      display:none; object-fit:cover;
+      border-radius:12px; border:3px solid var(--main-color);
     }
 
     #result {
-      margin-top: 25px;
-      font-size: 1.2em;
-      font-weight: 600;
-      padding: 12px;
-      border-radius: 8px;
-      display: none;
+      margin-top:20px; font-size:1.2em; padding:12px;
+      border-radius:10px; display:none;
     }
 
     #result.defectuosa {
-      background: rgba(200,16,46,0.15);
-      border: 1px solid var(--main-color);
-      color: var(--main-color);
+      background:rgba(200,16,46,0.15);
+      border:1px solid var(--main-color);
+      color:var(--main-color);
     }
 
     #result.no_defectuosa {
-      background: rgba(125,125,125,0.15);
-      border: 1px solid var(--neutral-color);
-      color: var(--neutral-color);
+      background:rgba(125,125,125,0.15);
+      border:1px solid var(--neutral-color);
+      color:var(--neutral-color);
     }
 
-    .loader {
-      display: none;
-      margin: 20px auto;
-      border: 4px solid rgba(0,0,0,0.1);
-      border-top: 4px solid var(--main-color);
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    footer {
-      margin-top: 25px;
-      font-size: 0.8em;
-      color: #7D7D7D;
-    }
-
-    .helpdesk {
-      margin-top: 40px;
-      text-align: left;
-    }
-
-    .helpdesk h2 {
-      color: var(--main-color);
-      font-size: 1.2rem;
-      margin-bottom: 8px;
-    }
-
-    input[type="text"], input[type="password"], textarea {
-      width: 100%;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #7D7D7D;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-      color: #2E2E2E;
+    textarea {
+      width:100%; min-height:90px;
+      padding:10px; border-radius:8px; border:1px solid #7D7D7D;
     }
 
     #sendPrompt {
-      background: var(--main-color);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 16px;
-      cursor: pointer;
-      font-weight: 600;
-      width: 100%;
-      margin-top: 8px;
+      background:var(--main-color);
+      color:white; border:none;
+      font-weight:700;
+      padding:12px 20px;
+      border-radius:8px;
+      cursor:pointer;
     }
 
-    #sendPrompt:hover {
-      filter: brightness(0.9);
-    }
+    #sendPrompt:hover { filter:brightness(.9); }
 
     #responseBox {
-      background: #F4F4F4;
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-      min-height: 50px;
-      color: #2E2E2E;
-      white-space: pre-wrap;
+      display:none;
+      background:#F4F4F4;
+      border-radius:8px;
+      padding:12px;
+      margin-top:10px;
+      min-height:40px;
+      color:#2E2E2E;
+      white-space:pre-line;
     }
-
-    /* ====================================================================== */
-    /* --- RESPONSIVE PARA LAPTOP Y PANTALLAS GRANDES ---------------------- */
-    /* ====================================================================== */
-    @media (min-width: 900px) {
-
-      body {
-        justify-content: center;
-      }
-
-      .container {
-        width: 900px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        text-align: left;
-        padding: 50px 40px;
-      }
-
-      .logo-container {
-        text-align: center;
-        grid-column: span 2;
-      }
-
-      h1 {
-        text-align: center;
-        grid-column: span 2;
-      }
-
-      .helpdesk {
-        margin-top: 0;
-        padding-left: 20px;
-        border-left: 2px solid #e0e0e0;
-      }
-
-      #preview {
-        width: 260px;
-        height: 260px;
-      }
-
-      #sendPrompt {
-        width: auto;
-        padding: 12px 20px;
-      }
-
-      footer {
-        grid-column: span 2;
-        text-align: center;
-      }
-    }
-
-    /* ====================================================================== */
-    /* --- RESPONSIVE PARA TABLETS ----------------------------------------- */
-    /* ====================================================================== */
-    @media (min-width: 600px) and (max-width: 899px) {
-      .container {
-        width: 600px;
-        padding: 40px;
-      }
-
-      #preview {
-        width: 240px;
-        height: 240px;
-      }
-    }
-
   </style>
 </head>
+
 <body>
   <div class="container">
 
     <div class="logo-container">
-      <img src="FRISA.png" alt="Logo FRISA">
+      <img src="FRISA.png" width="120">
     </div>
 
     <h1>Clasificador de Imágenes</h1>
 
+    <!-- COLUMNA IZQUIERDA -->
     <div>
-      <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No Defectuosa</b>.</p>
+      <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No defectuosa</b>.</p>
 
       <input type="file" id="imageInput" accept="image/*">
-      <img id="preview" alt="Previsualización">
-      <div class="loader" id="loader"></div>
-      <p id="result">Esperando imagen...</p>
+      <img id="preview">
+
+      <p id="result"></p>
     </div>
 
-    <!-- --- Helpdesk --- -->
+    <!-- COLUMNA DERECHA (ASISTENTE Azure vía Backend) -->
     <div class="helpdesk">
-      <h2>💬 Asistente IA (Azure OpenAI)</h2>
+      <h2>💬 Asistente IA FRISA</h2>
 
-      <input type="text" id="endpointInput" placeholder="https://TU_ENDPOINT.openai.azure.com/">
-      <input type="text" id="deploymentInput" placeholder="Nombre del deployment (ej: gpt-4o)">
-      <input type="password" id="apiKeyInput" placeholder="Tu API Key de Azure OpenAI">
-      
-      <textarea id="promptInput" placeholder="Escribe tu pregunta o solicitud..."></textarea>
-      <button id="sendPrompt">Enviar a Azure OpenAI</button>
-      <div id="responseBox">Esperando mensaje...</div>
+      <textarea id="promptInput" placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
+
+      <button id="sendPrompt">Preguntar a la IA</button>
+
+      <div id="responseBox"></div>
     </div>
 
-    <footer>🧠 FRISA | Clasificador + Asistente Azure OpenAI GPT-4o</footer>
-
+    <footer>🧠 FRISA | Clasificador + Asistente IA</footer>
   </div>
 
-  <!-- SCRIPT IGUAL -->
-  <script>
-    let model, metadata;
+  <canvas id="cropCanvas" style="display:none;"></canvas>
 
-    async function loadModel() {
-      model = await tf.loadLayersModel('model.json');
-      const metaResponse = await fetch('metadata.json');
-      metadata = await metaResponse.json();
-      console.log("Modelo y metadata cargados correctamente");
-    }
+<script>
+let model, metadata;
+let lastPredictionJson = null;
+let lastImageB64 = null;
 
-    async function predict() {
-      const imgElement = document.getElementById('preview');
-      const resultBox = document.getElementById('result');
-      const loader = document.getElementById('loader');
+async function loadModel() {
+  model = await tf.loadLayersModel("model.json");
+  const meta = await fetch("metadata.json");
+  metadata = await meta.json();
+}
 
-      resultBox.style.display = "none";
-      loader.style.display = "block";
+// --- CLASIFICACIÓN ---
+async function predict() {
+  const img = document.getElementById("preview");
+  const resultBox = document.getElementById("result");
 
-      const size = Math.min(imgElement.width, imgElement.height);
-      const startX = (imgElement.width - size) / 2;
-      const startY = (imgElement.height - size) / 2;
+  const size = Math.min(img.width, img.height);
+  const sx = (img.width - size) / 2;
+  const sy = (img.height - size) / 2;
 
-      const imageTensor = tf.browser.fromPixels(imgElement)
-        .slice([startY, startX, 0], [size, size, 3])
-        .resizeBilinear([metadata.imageSize, metadata.imageSize])
-        .toFloat()
-        .div(127.5)
-        .sub(1)
-        .expandDims(0);
+  let tensor = tf.browser.fromPixels(img)
+    .slice([sy, sx, 0], [size, size, 3])
+    .resizeBilinear([metadata.imageSize, metadata.imageSize])
+    .toFloat().div(127.5).sub(1).expandDims(0);
 
-      let logits = model.predict(imageTensor);
-      if (!Array.isArray(logits)) logits = tf.softmax(logits);
+  let logits = model.predict(tensor);
+  if (!Array.isArray(logits)) logits = tf.softmax(logits);
 
-      const prediction = await logits.data();
-      loader.style.display = "none";
-      tf.dispose([imageTensor, logits]);
+  const prediction = await logits.data();
+  tf.dispose([tensor, logits]);
 
-      const labels = metadata.labels;
-      const results = Array.from(prediction).map((p, i) => ({
-        label: labels[i],
-        probability: (p * 100).toFixed(2)
-      }));
-      results.sort((a, b) => b.probability - a.probability);
+  const labels = metadata.labels;
 
-      const top = results[0];
-      resultBox.textContent = `Predicción: ${top.label} (${top.probability}%)`;
+  const results = Array.from(prediction).map((p, i) => ({
+    label: labels[i],
+    prob: (p*100).toFixed(2)
+  })).sort((a,b)=>b.prob-a.prob);
 
-      resultBox.className = "";
-      if (top.label.toLowerCase().includes("non") || top.label.toLowerCase().includes("no")) {
-        resultBox.classList.add("no_defectuosa");
-      } else {
-        resultBox.classList.add("defectuosa");
-      }
+  lastPredictionJson = JSON.stringify(results);
 
-      resultBox.style.display = "block";
-    }
+  const top = results[0];
 
-    document.getElementById('imageInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      const img = document.getElementById('preview');
-      if (!file) return;
-      img.src = URL.createObjectURL(file);
-      img.onload = () => {
-        img.style.display = "block";
-        predict();
-      };
+  resultBox.textContent = `Predicción: ${top.label} (${top.prob}%)`;
+  resultBox.style.display = "block";
+
+  if (top.label.toLowerCase().includes("no"))
+      resultBox.className = "no_defectuosa";
+  else
+      resultBox.className = "defectuosa";
+
+  // Guardar imagen recortada en Base64 para el asistente
+  const canvas = document.getElementById("cropCanvas");
+  canvas.width = metadata.imageSize;
+  canvas.height = metadata.imageSize;
+  const ctx = canvas.getContext("2d");
+
+  ctx.drawImage(img, sx, sy, size, size, 0, 0, metadata.imageSize, metadata.imageSize);
+  lastImageB64 = canvas.toDataURL("image/jpeg", 0.9).split(",")[1];
+}
+
+document.getElementById("imageInput").onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const img = document.getElementById("preview");
+  img.src = URL.createObjectURL(file);
+
+  img.onload = () => {
+    img.style.display = "block";
+    predict();
+  };
+};
+
+// =============================
+// 🔥 ASISTENTE IA VIA BACKEND
+// =============================
+document.getElementById("sendPrompt").onclick = async () => {
+  const prompt = document.getElementById("promptInput").value.trim();
+  const box = document.getElementById("responseBox");
+
+  if (!prompt) return alert("Escribe una pregunta.");
+
+  box.style.display = "block";
+  box.textContent = "💭 Consultando IA...";
+
+  try {
+    const res = await fetch("/api/aoai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        prediccionJson: lastPredictionJson,
+        imageB64: lastImageB64
+      })
     });
 
-    document.getElementById('sendPrompt').addEventListener('click', async () => {
-      const endpoint = document.getElementById('endpointInput').value.trim();
-      const deployment = document.getElementById('deploymentInput').value.trim();
-      const apiKey = document.getElementById('apiKeyInput').value.trim();
-      const prompt = document.getElementById('promptInput').value.trim();
-      const box = document.getElementById('responseBox');
+    const data = await res.json();
 
-      if (!endpoint || !deployment || !apiKey) {
-        alert("⚠️ Completa los campos: Endpoint, Deployment y API Key.");
-        return;
-      }
-      if (!prompt) return alert("Escribe una pregunta primero.");
+    if (data.error) {
+      box.textContent = "❌ Error: " + data.error;
+      return;
+    }
 
-      box.textContent = "💭 Enviando solicitud a Azure OpenAI...";
+    box.textContent = data.reply || "⚠️ La IA no generó respuesta.";
+  }
+  catch (err) {
+    box.textContent = "❌ Error de conexión con el servidor.";
+  }
+};
 
-      try {
-        const url = `${endpoint}openai/deployments/${deployment}/chat/completions?api-version=2024-12-01-preview`;
+loadModel();
+</script>
 
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "api-key": apiKey
-          },
-          body: JSON.stringify({
-            messages: [
-              { role: "system", content: "Eres un asistente técnico de soporte de FRISA, claro y servicial." },
-              { role: "user", content: prompt }
-            ],
-            max_tokens: 1024,
-          })
-        });
-
-        const data = await res.json();
-        if (data.error) {
-          box.textContent = `❌ Error: ${data.error.message}`;
-          return;
-        }
-
-        const reply = data.choices?.[0]?.message?.content;
-        box.textContent = reply ? reply.trim() : "⚠️ No se recibió respuesta del modelo.";
-      } catch (err) {
-        box.textContent = "❌ Error de conexión o datos incorrectos.";
-      }
-    });
-
-    loadModel();
-  </script>
 </body>
 </html>
