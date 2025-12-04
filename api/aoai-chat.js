@@ -1,9 +1,9 @@
 export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Método no permitido" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método no permitido" });
     }
 
+  try {
     const { prompt } = req.body;
 
     if (!prompt) {
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
     if (!endpoint || !apiKey || !deployment) {
       return res.status(500).json({
-        error: "Faltan variables de entorno",
+        error: "Faltan variables de entorno AZURE_OPENAI_*",
       });
     }
 
@@ -30,19 +30,29 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "Eres un asistente industrial de FRISA." },
-          { role: "user", content: prompt },
+          {
+            role: "system",
+            content: "Eres un asistente industrial experto en FRISA que explica defectos de manufactura."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
         ],
+        temperature: 0.2,
       }),
     });
 
     const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content || "No response";
 
-    res.status(200).json({ answer: text });
+    const answer =
+      data?.choices?.[0]?.message?.content ||
+      "No hubo respuesta del modelo";
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json({ answer });
+
+  } catch (err) {
+    console.error("ERROR Azure:", err);
+    res.status(500).json({ error: err.message });
   }
 }
