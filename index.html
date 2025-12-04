@@ -220,7 +220,7 @@ document.getElementById("sendPrompt").onclick = async () => {
   }
 
   box.style.display = "block";
-  box.textContent = "💭 Consultando IA...";
+  box.innerHTML = "💭 Consultando IA...";
 
   try {
     const res = await fetch("/api/aoai-chat", {
@@ -233,61 +233,40 @@ document.getElementById("sendPrompt").onclick = async () => {
       })
     });
 
-    // Si el servidor respondió 200 pero sin body, evitamos reventar el front
-    if (!res.ok) {
-      box.textContent = `❌ Error HTTP ${res.status}`;
+    let data = await res.json();
+    console.log("Respuesta del servidor:", data);
+
+    // ===============================
+    // 🔥 EXTRAER respuesta correcta
+    // ===============================
+    let texto = data.answer || data.reply || data.response || data.message || null;
+
+    if (!texto) {
+      box.innerHTML = "⚠️ El servidor respondió sin texto.";
       return;
     }
 
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      box.textContent = "⚠️ El servidor no devolvió JSON válido.";
-      return;
-    }
+    // ===============================
+    // 🔥 LIMPIAR FORMATO
+    // ===============================
 
-    console.log("🔎 Respuesta cruda de /api/aoai-chat:", data);
+    // Saltos de línea → párrafos HTML
+    texto = texto.replace(/\n\n/g, "<br><br>");
+    texto = texto.replace(/\n/g, "<br>");
 
-    if (data.error) {
-      box.textContent = "❌ Error: " + data.error;
-      return;
-    }
+    // **negrita** → <b>negrita</b>
+    texto = texto.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
 
-    // Intentamos distintas formas típicas de respuesta
-    let respuesta =
-      (typeof data === "string" ? data : null) ||
-      data.reply ||
-      data.response ||
-      data.respuesta ||
-      data.message ||
-      (data.choices && data.choices[0] && (
-        data.choices[0].message?.content || data.choices[0].text
-      ));
+    // ===============================
+    // 🔥 MOSTRAR TEXTO FORMATEADO
+    // ===============================
+    box.innerHTML = texto;
 
-    if (respuesta && typeof respuesta === "object") {
-      // Por si el backend envía { reply: { content: "..." } }
-      if (respuesta.content) respuesta = respuesta.content;
-    }
-
-    if (respuesta && typeof respuesta === "string" && respuesta.trim() !== "") {
-      box.textContent = respuesta.trim();
-    } else {
-      // Si seguimos sin nada, mostramos el JSON completo para depurar
-      box.textContent =
-        "⚠️ La IA no generó respuesta.\n\n" +
-        "Contenido devuelto por el servidor:\n" +
-        JSON.stringify(data, null, 2);
-    }
-  }
-  catch (err) {
-    console.error("❌ Error llamando a /api/aoai-chat:", err);
-    box.textContent = "❌ Error de conexión con el servidor.";
+  } catch (err) {
+    console.error(err);
+    box.innerHTML = "❌ Error de conexión con el servidor.";
   }
 };
-
-loadModel();
-</script>
 
 </body>
 </html>
