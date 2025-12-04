@@ -101,7 +101,7 @@
   <div class="container">
 
     <div class="logo-container">
-      <img src="FRISA.png" width="120">
+      <img src="FRISA.png" width="120" alt="FRISA">
     </div>
 
     <h1>Clasificador de Imágenes</h1>
@@ -111,7 +111,7 @@
       <p>Sube una imagen para detectar si está <b>Defectuosa</b> o <b>No defectuosa</b>.</p>
 
       <input type="file" id="imageInput" accept="image/*">
-      <img id="preview">
+      <img id="preview" alt="Previsualización">
 
       <p id="result"></p>
     </div>
@@ -120,7 +120,8 @@
     <div class="helpdesk">
       <h2>💬 Asistente IA FRISA</h2>
 
-      <textarea id="promptInput" placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
+      <textarea id="promptInput"
+        placeholder="Haz una pregunta sobre la pieza, defectos, acción recomendada, etc..."></textarea>
 
       <button id="sendPrompt">Preguntar a la IA</button>
 
@@ -141,6 +142,7 @@ async function loadModel() {
   model = await tf.loadLayersModel("model.json");
   const meta = await fetch("metadata.json");
   metadata = await meta.json();
+  console.log("✅ Modelo y metadata cargados");
 }
 
 // --- CLASIFICACIÓN ---
@@ -212,7 +214,10 @@ document.getElementById("sendPrompt").onclick = async () => {
   const prompt = document.getElementById("promptInput").value.trim();
   const box = document.getElementById("responseBox");
 
-  if (!prompt) return alert("Escribe una pregunta.");
+  if (!prompt) {
+    alert("Escribe una pregunta.");
+    return;
+  }
 
   box.style.display = "block";
   box.textContent = "💭 Consultando IA...";
@@ -228,25 +233,55 @@ document.getElementById("sendPrompt").onclick = async () => {
       })
     });
 
-    const data = await res.json();
+    // Si el servidor respondió 200 pero sin body, evitamos reventar el front
+    if (!res.ok) {
+      box.textContent = `❌ Error HTTP ${res.status}`;
+      return;
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      box.textContent = "⚠️ El servidor no devolvió JSON válido.";
+      return;
+    }
+
+    console.log("🔎 Respuesta cruda de /api/aoai-chat:", data);
 
     if (data.error) {
       box.textContent = "❌ Error: " + data.error;
       return;
     }
 
-    // 🔥 CORRECCIÓN: aceptar cualquier nombre de campo
-    const respuesta =
+    // Intentamos distintas formas típicas de respuesta
+    let respuesta =
+      (typeof data === "string" ? data : null) ||
       data.reply ||
       data.response ||
       data.respuesta ||
-      data.message;
+      data.message ||
+      (data.choices && data.choices[0] && (
+        data.choices[0].message?.content || data.choices[0].text
+      ));
 
-    box.textContent = respuesta
-      ? respuesta.trim()
-      : "⚠️ La IA no generó respuesta.";
+    if (respuesta && typeof respuesta === "object") {
+      // Por si el backend envía { reply: { content: "..." } }
+      if (respuesta.content) respuesta = respuesta.content;
+    }
+
+    if (respuesta && typeof respuesta === "string" && respuesta.trim() !== "") {
+      box.textContent = respuesta.trim();
+    } else {
+      // Si seguimos sin nada, mostramos el JSON completo para depurar
+      box.textContent =
+        "⚠️ La IA no generó respuesta.\n\n" +
+        "Contenido devuelto por el servidor:\n" +
+        JSON.stringify(data, null, 2);
+    }
   }
   catch (err) {
+    console.error("❌ Error llamando a /api/aoai-chat:", err);
     box.textContent = "❌ Error de conexión con el servidor.";
   }
 };
