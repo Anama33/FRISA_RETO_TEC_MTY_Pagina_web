@@ -80,36 +80,6 @@
       font-weight:700;
     }
 
-    #addHistoryBtn:hover { filter:brightness(.9); }
-
-    textarea {
-      width:100%; min-height:90px;
-      padding:10px; border-radius:8px; border:1px solid #7D7D7D;
-    }
-
-    #sendPrompt {
-      background:var(--main-color);
-      color:white; border:none;
-      font-weight:700;
-      padding:12px 20px;
-      border-radius:8px;
-      cursor:pointer;
-    }
-
-    #sendPrompt:hover { filter:brightness(.9); }
-
-    #responseBox {
-      display:none;
-      background:#F4F4F4;
-      border-radius:8px;
-      padding:12px;
-      margin-top:10px;
-      min-height:40px;
-      color:#2E2E2E;
-      white-space:pre-line;
-    }
-
-    /* Tabla Historial */
     table {
       width:100%;
       border-collapse:collapse;
@@ -117,23 +87,24 @@
       background:white;
       border-radius:12px;
       overflow:hidden;
+      text-align:center;
     }
 
-    table th {
+    th {
       background:#C8102E;
       color:white;
-      padding:10px;
+      padding:6px;
+      font-size:14px;
+      line-height:16px;
+      white-space:pre-line; /* permite saltos en el header */
     }
 
-    table td {
-      padding:10px;
+    td {
+      padding:6px;
       border-bottom:1px solid #ddd;
     }
 
-    .red {
-      color:#C8102E;
-      font-weight:bold;
-    }
+    .red { color:#C8102E; font-weight:bold; }
   </style>
 </head>
 
@@ -157,14 +128,13 @@
 
       <button id="addHistoryBtn">Añadir al historial</button>
 
-      <!-- TABLA HISTORIAL -->
       <table id="historyTable">
         <thead>
           <tr>
             <th>ID Pieza</th>
-            <th>TiempoDelta_Maquinados</th>
-            <th>ConfAlturaCaliente_Rolas</th>
-            <th>TiempoEnHorno_Hornos</th>
+            <th>TiempoDelta<br>Maquinados</th>
+            <th>ConfAlturaCaliente<br>Rolas</th>
+            <th>TiempoEnHorno<br>Hornos</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -282,7 +252,24 @@ document.getElementById("addHistoryBtn").onclick = () => {
   `;
 
   tbody.innerHTML += row;
+
+  // 🔥 Reiniciar la app para cargar una nueva imagen
+  resetApp();
 };
+
+// ===================================
+// 🔄 FUNCIÓN PARA REINICIAR APP
+// ===================================
+function resetApp() {
+  document.getElementById("preview").style.display = "none";
+  document.getElementById("preview").src = "";
+  document.getElementById("imageInput").value = "";
+  document.getElementById("result").innerHTML = "";
+  document.getElementById("result").style.display = "none";
+  document.getElementById("addHistoryBtn").style.display = "none";
+  lastImageB64 = null;
+  lastPredictionJson = null;
+}
 
 // ===================================
 // 🔥 ASISTENTE IA
